@@ -1,0 +1,51 @@
+# Build directories
+/build/
+/_rootdir/
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CMakeLists.txt.user
+CTestTestfile.cmake
+
+# Make / Autotools
+Makefile
+config.log
+config.status
+configure
+install-sh
+missing
+libtool
+ltmain.sh
+aclocal.m4
+autom4te.cache/
+m4/
+
+# Typical compiled objects and libraries
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.so
+*.dylib
+
+# Binaries
+/bin/
+*.exe
+
+# External/build directories created by linux-build.sh or CMake
+external/**/TheBuild/
+external/**/Boo/
+external/**/build/
+external/**/install/
+external/**/dist/
+external/**/okay
+
+# Editor and OS metadata
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
