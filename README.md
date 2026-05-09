@@ -50,58 +50,123 @@ Especially patches, these are **very much** welcome ;)
 
 ## Building
 
-Since I’m currently using the GNU/Linux operating system, I’ll describe how to build and run this game on GNU/Linux with the “apt” package manager (Debian, Ubuntu and others)
+Prerequisites
+-------------
 
-For sure, you already know what the *console* aka *terminal* is, already did ``sudo apt-get install git`` for any deals with GitHub, and cloned the game’s repository somewhere on your local storage. Having a completely fresh system in which nothing was compiled before, to get all the things needed for building at once, just type
+Debian/Ubuntu:
 
-```
-sudo apt-get install build-essential binutils make cmake autoconf automake libtool
-```
-
-And yep, don’t forget ``libx11-dev`` for the “allegro” library (https://github.com/dougmencken/HeadOverHeels/issues/37#issuecomment-1743796681)
-
-```
-sudo apt install libx11-dev
+```sh
+sudo apt update
+sudo apt install build-essential cmake pkg-config \
+  zlib1g-dev libpng-dev libogg-dev libvorbis-dev libtinyxml2-dev \
+  libx11-dev libxext-dev libxcursor-dev libxpm-dev libxxf86vm-dev
 ```
 
-Then building the “Head over Heels” game on GNU/Linux is pretty easy with the build scripts I provided. All the used dependencies will be built too.
-The first script is
+Arch Linux:
 
-```
-./linux-build.sh
-```
-
-It produces a binary that works through the allegro **version 4** library (which is quite outdated).
-To get a binary running over the newer allegro **version 5** (however, it is currently slower than over allegro4), use
-
-```
-./extras/linux-allegro5-build.sh
+```sh
+sudo pacman -Syu base-devel cmake pkgconf zlib libpng libogg libvorbis tinyxml2 \
+  libx11 libxext libxcursor libxpm libxxf86vm
 ```
 
-(install ``libgl1-mesa-dev`` package if you see the “X11 support currently requires OpenGL or OpenGL ES support” error and ``libxcursor-dev`` on “Looking for XcursorImageCreate in Xcursor - not found : X11 support requires Xcursor library”)
+Allegro 4 packages vary by distribution. Prefer a system development package
+when one is available. If not, use `-DUSE_BUNDLED_ALLEGRO=ON`.
 
-```
-sudo apt install libgl1-mesa-dev libxcursor-dev
-```
+Developer Build
+---------------
 
-Okay, now you have a new and successful build of the game.
-Unedited ``linux-build.sh`` script installs the game inside your build directory at *where-the-build-dir-is/_rootdir*, thus type
+This keeps everything under `build/`. The key is configuring the install prefix
+to the build directory before building the executable, because that prefix is
+compiled into the game as its data path:
 
-```
-cd _rootdir
-bin/headoverheels
-```
+```sh
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_INSTALL_PREFIX="$PWD/build" \
+  -DUSE_BUNDLED_TINYXML2=ON \
+  -DUSE_BUNDLED_ALLEGRO=ON
 
-just after finishing a build to get the game running! 😲🥹😌
-
-## If something ’s wrong there
-
-Don’t hear any music and sounds (with allegro 4)? Previously, I used **padsp** to deal with this... But then I installed some packages, namely `libpulse-dev`, `libsndfile1-dev` and `libasound2-dev`, and the subsequent full build played sounds and music just out of the box. So the solution is
-
-```
-sudo apt install -y libpulse-dev libsndfile1-dev libasound2-dev
+cmake --build build --parallel
+cmake --build build --target install-gamedata
+./build/source/headoverheels
 ```
 
-before `./linux-build.sh`
+That produces this local layout:
 
-Any other gotchas? Feel free to write and ask 😚
+```text
+build/source/headoverheels
+build/share/headoverheels/...
+```
+
+If you omit `-DCMAKE_INSTALL_PREFIX`, CMake keeps its default prefix of
+`/usr/local`, and the compiled data path is `/usr/local/share/headoverheels`.
+The `install-gamedata` target will still stage files in `build/share` by
+default, but the executable will not look there unless the install prefix was
+set to `build` before it was compiled.
+
+Normal Install
+--------------
+
+Choose the install prefix at configure time:
+
+```sh
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+
+cmake --build build --parallel
+cmake --install build
+```
+
+The installed layout is:
+
+```text
+<prefix>/bin/headoverheels
+<prefix>/share/headoverheels/...
+```
+
+At runtime the game uses the configured data directory. For a normal install,
+that is `<prefix>/share/headoverheels`.
+
+Useful Targets
+--------------
+
+Install only gamedata into the build tree:
+
+```sh
+cmake --build build --target install-gamedata
+```
+
+For this staged data to be used by `build/source/headoverheels`, configure with
+`-DCMAKE_INSTALL_PREFIX="$PWD/build"` and rebuild the executable.
+
+Override the data-only staging prefix:
+
+```sh
+cmake -S . -B build -DHOH_GAMEDATA_STAGE_PREFIX="$PWD/some-prefix"
+cmake --build build --target install-gamedata
+```
+
+CMake Options
+-------------
+
+- `-DUSE_SYSTEM_ZLIB=ON|OFF`: prefer system zlib, default `ON`.
+- `-DUSE_SYSTEM_LIBPNG=ON|OFF`: prefer system libpng, default `ON`.
+- `-DUSE_SYSTEM_OGG=ON|OFF`: prefer system libogg, default `ON`.
+- `-DUSE_SYSTEM_VORBIS=ON|OFF`: prefer system libvorbis, default `ON`.
+- `-DUSE_SYSTEM_TINYXML2=ON|OFF`: prefer system tinyxml2, default `ON`.
+- `-DUSE_BUNDLED_TINYXML2=ON`: fetch and build tinyxml2 11.0.0 privately if
+  system tinyxml2 is not found.
+- `-DUSE_BUNDLED_ALLEGRO=ON`: force the bundled Allegro 4 path, extract
+  `external/allegro/allegro-4.4.3.1.tar.gz`, and link it as a static library.
+
+Notes
+-----
+
+- The bundled Allegro path is mainly for developer convenience and unsupported
+  distributions. System Allegro packages are still preferred for distribution
+  packaging.
+- Bundled tinyxml2 is linked into the game build but is not installed as a
+  separate library by this project.
+- If CMake reports a missing dependency, either install the corresponding
+  development package or enable the bundled option when one exists.
